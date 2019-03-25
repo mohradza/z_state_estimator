@@ -25,8 +25,8 @@ class zStateEstimator:
         self.range_variance = rospy.get_param('range_variance', .1)
        
         # Initialize atittude
-        #self.roll = 0.0
-        #self.pitch = 0.0
+        self.roll = 0.0
+        self.pitch = 0.0
         self.tworot = np.identity(3)
         self.onerot = np.identity(3)
 
@@ -66,7 +66,8 @@ class zStateEstimator:
         # Convert range_val to h_agl using roll / pitch values
         h_agl_vec = self.onerot*self.tworot*np.matrix([[0],[0],[range_val]])
         #h_agl = h_agl_vec.item(2)
-        h_agl = range_val
+        h_agl = range_val*math.cos(self.roll)*math.cos(self.pitch)
+        print(h_agl)
 
         # Low pass filter the h_agl value
         # to remove some of the sensor noise.
@@ -107,10 +108,10 @@ class zStateEstimator:
 
 
     def attitude_cb(self, msg):
-        roll = -msg.vector.x
-        pitch = -msg.vector.y
-        self.tworot = np.matrix([[math.cos(pitch), 0, -sin(pitch)],[0, 1, 0],[sin(pitch), 0, cos(pitch)]])
-        self.onerot = np.matrix([[1, 0, 0],[0, cos(roll), sin(roll)],[0, -sin(roll), cos(roll)]])
+        self.roll = msg.vector.x
+        self.pitch = msg.vector.y
+        #self.tworot = np.matrix([[math.cos(pitch), 0, -sin(pitch)],[0, 1, 0],[sin(pitch), 0, cos(pitch)]])
+        #self.onerot = np.matrix([[1, 0, 0],[0, cos(roll), sin(roll)],[0, -sin(roll), cos(roll)]])
 
 if __name__ == '__main__':
     rospy.init_node('z_state_estimator')
