@@ -53,10 +53,10 @@ class zStateEstimator:
     def range_cb(self, msg):
         range_val = msg.range
         if (range_val < 0):
-            rospy.loginfo_throttle(1,'invalid range value, setting to min')
+            rospy.loginfo_throttle(5,'invalid range value, setting to min')
             range_val = .1
         elif (range_val > 3):
-            rospy.loginfo_throttle(1,'invalid range value, setting to max')
+            rospy.loginfo_throttle(5,'invalid range value, setting to max')
             range_val = 3
         range_time = msg.header.stamp
         range_time_s = range_time.to_sec()
