@@ -1,8 +1,10 @@
 <launch>
    <!-- Launch the Teraranger Evo -->
-   <node pkg="teraranger" name="teraranger_node" type="evo" output="screen" />
-
+  <!-- <node pkg="teraranger" name="teraranger_node" type="evo" output="screen" />
+-->
    <!-- Launch the state estimator -->
-   <node pkg="z_state_estimator" name="z_state_estimator" type="state_estimator.py" />
+   <node pkg="z_state_estimator" name="z_state_estimator" type="state_estimator.py" output="screen">
+     <param name="use_sim_time" value="true" />
+   </node>
 
 </launch>
