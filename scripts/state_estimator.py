@@ -15,15 +15,19 @@ import numpy as np
 class zStateEstimator:
 
     def __init__(self):
+        # Initialize atittude
+        self.use_attitude = False
+        self.use_imu = True
+
         # Define subscribers
         self.range_sub = rospy.Subscriber('/teraranger_evo', Range, self.range_cb, queue_size=10)
         self.attitude_sub = rospy.Subscriber('/attitude/euler', Vector3Stamped, self.attitude_cb, queue_size=10)
-
         self.imu_sub = rospy.Subscriber('/imu_raw', Imu, self.imu_cb, queue_size=100)
 
         # Define publishers
         self.z_state_pub = rospy.Publisher('/z_state_estimator/z_state_estimate', ZStateEst, queue_size=10)
         self.z_twist_pub = rospy.Publisher('/z_state_estimator/twist', TwistWithCovarianceStamped, queue_size=100)
+        self.odom_pub = rospy.Publisher('/z_state_estimator/odom', Odometry, queue_size=100)
         #self.z_twist_pub = rospy.Publisher('/z_state_estimator/odom', Odometry, queue_size=100)
 
         # Import Parameters
@@ -31,9 +35,7 @@ class zStateEstimator:
         self.v_filt_alpha = rospy.get_param('v_filt_alpha', .1)
         self.range_variance = rospy.get_param('range_variance', .1)
 
-        # Initialize atittude
-        self.use_attitude = False
-        self.use_imu = True
+
         self.roll = 0.0
         self.pitch = 0.0
         self.tworot = np.identity(3)
@@ -48,7 +50,14 @@ class zStateEstimator:
         self.v_filt = 0.0
         self.v_filt_last = 0.0
 
+        self.z_pos_est_cov = .0001
+        self.z_vel_est_cov = .01
+
         self.est_msg = ZStateEst()
+        self.odom_msg = Odometry()
+        #self.odom_msg.child_frame_id = 'odom'
+        self.odom_msg.header.frame_id = 'odom'
+
         self.twist_msg = TwistWithCovarianceStamped()
         self.twist_msg.header.frame_id = "z_est_frame"
         self.twist_msg.twist.covariance[14] = .01
@@ -117,6 +126,13 @@ class zStateEstimator:
         self.est_msg.height_agl.data = self.xk.item(0)
         self.est_msg.z_velocity.data = self.v_filt
         self.z_state_pub.publish(self.est_msg)
+
+        self.odom_msg.header.stamp = rospy.Time.now()
+        self.odom_msg.pose.pose.position.z = self.xk.item(0)
+        self.odom_msg.pose.covariance[14] = self.z_pos_est_cov
+        self.odom_msg.twist.twist.linear.z = self.v_filt
+        self.odom_msg.twist.covariance[14] = self.z_vel_est_cov
+        self.odom_pub.publish(self.odom_msg)
 
         self.twist_msg.header.stamp = rospy.Time.now()
         self.twist_msg.twist.twist.linear.z = self.v_filt
