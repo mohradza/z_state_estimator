@@ -50,7 +50,7 @@ class zStateEstimator:
         self.v_filt = 0.0
         self.v_filt_last = 0.0
 
-        self.z_pos_est_cov = .0001
+        self.z_pos_est_cov = .00001
         self.z_vel_est_cov = .01
 
         self.est_msg = ZStateEst()
