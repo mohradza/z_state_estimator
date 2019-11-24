@@ -132,6 +132,10 @@ class zStateEstimator:
         self.odom_msg.pose.covariance[14] = self.z_pos_est_cov
         self.odom_msg.twist.twist.linear.z = self.v_filt
         self.odom_msg.twist.covariance[14] = self.z_vel_est_cov
+
+        # GENE ADDED
+        self.odom_msg.pose.pose.orientation.w = 1
+
         self.odom_pub.publish(self.odom_msg)
 
         self.twist_msg.header.stamp = rospy.Time.now()
