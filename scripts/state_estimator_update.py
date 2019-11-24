@@ -35,6 +35,7 @@ class zStateEstimator:
         self.v_filt_alpha = rospy.get_param('v_filt_alpha', .1)
         self.range_variance = rospy.get_param('range_variance', .1)
 
+
         self.roll = 0.0
         self.pitch = 0.0
         self.tworot = np.identity(3)
@@ -49,7 +50,7 @@ class zStateEstimator:
         self.v_filt = 0.0
         self.v_filt_last = 0.0
 
-        self.z_pos_est_cov = .0001
+        self.z_pos_est_cov = .00001
         self.z_vel_est_cov = .01
 
         self.est_msg = ZStateEst()
@@ -87,57 +88,50 @@ class zStateEstimator:
         h_agl_vec = self.onerot*self.tworot*np.matrix([[0],[0],[range_val]])
         #h_agl = h_agl_vec.item(2)
         h_agl = range_val*math.cos(self.roll)*math.cos(self.pitch)
-
+        #print(h_agl)
 
         # Low pass filter the h_agl value
         # to remove some of the sensor noise.
         # This improves the velocity estimates greatly.
-        #self.h_filt = (1-self.h_filt_alpha)*self.h_filt_last + self.h_filt_alpha*h_agl
-        #self.h_filt_last = self.h_filt
+        self.h_filt = (1-self.h_filt_alpha)*self.h_filt_last + self.h_filt_alpha*h_agl
+        self.h_filt_last = self.h_filt
 
-        #A = np.matrix([[1, 0, dt],[1, 0, 0],[1/dt, -1/dt, 0]])
+        A = np.matrix([[1, 0, dt],[1, 0, 0],[1/dt, -1/dt, 0]])
+        H = np.matrix([1, 0, dt])
 
-        #H = np.matrix([1, 0, dt])
-
-        #if(not self.h_init):
-            #self.h_init = True
-            #self.xk = np.matri[[self.h_filt], [self.h_filt], [0.0]])
-            #self.P = np.full((3,3),0)
+        if(not self.h_init):
+            self.h_init = True
+            self.xk = np.matrix([[self.h_filt], [self.h_filt], [0.0]])
+            self.P = np.full((3,3),0)
 
         # Predict Ahead
-
-        #xkp1 = A*self.xk
-        #Pkp1 = A*self.P*A.transpose() + self.Q;
+        xkp1 = A*self.xk
+        Pkp1 = A*self.P*A.transpose() + self.Q;
 
         # Compute Kalman Gain
-        #K = Pkp1*H.transpose()*np.linalg.inv(H*Pkp1*H.transpose() + self.R)
+        K = Pkp1*H.transpose()*np.linalg.inv(H*Pkp1*H.transpose() + self.R)
 
         # Update State Estimate
-        #self.xk = xkp1 + K*(self.h_filt - H*xkp1)
+        self.xk = xkp1 + K*(self.h_filt - H*xkp1)
 
         # Update Error Covariance
-        #self.P = (np.identity(3) - K*H)*Pkp1
+        self.P = (np.identity(3) - K*H)*Pkp1
 
         # Filter the vertical velocity estimate
-        #self.v_filt = (1-self.v_filt_alpha)*self.v_filt_last + self.v_filt_alpha*self.xk.item(2)
-        #self.v_filt_last = self.v_filt
+        self.v_filt = (1-self.v_filt_alpha)*self.v_filt_last + self.v_filt_alpha*self.xk.item(2)
+        self.v_filt_last = self.v_filt
 
         # Publish the estimate
-
-        #self.est_msg.header.stamp = rospy.Time.now()
-        #self.est_msg.height_agl.data = self.xk.item(0)
-        #self.est_msg.z_velocity.data = self.v_filt
-        #self.z_state_pub.publish(self.est_msg)
+        self.est_msg.header.stamp = rospy.Time.now()
+        self.est_msg.height_agl.data = self.xk.item(0)
+        self.est_msg.z_velocity.data = self.v_filt
+        self.z_state_pub.publish(self.est_msg)
 
         self.odom_msg.header.stamp = rospy.Time.now()
-        self.odom_msg.pose.pose.position.z = h_agl
+        self.odom_msg.pose.pose.position.z = self.xk.item(0)
         self.odom_msg.pose.covariance[14] = self.z_pos_est_cov
-        self.odom_msg.twist.twist.linear.z = 0.0
+        self.odom_msg.twist.twist.linear.z = self.v_filt
         self.odom_msg.twist.covariance[14] = self.z_vel_est_cov
-
-        # GENE ADDED
-        self.odom_msg.pose.pose.orientation.w = 1
-
         self.odom_pub.publish(self.odom_msg)
 
         self.twist_msg.header.stamp = rospy.Time.now()
